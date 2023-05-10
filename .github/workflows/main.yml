@@ -84,7 +84,7 @@ jobs:
           androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
       - uses: actions/upload-artifact@v2
         with:
-          name: build-${{ matrix.targetPlatform }}
+          name: Build-${{ matrix.targetPlatform }}
           path: build/${{ matrix.targetPlatform }}
 
  releaseToGooglePlay:
@@ -104,7 +104,7 @@ jobs:
        - name: Download Android Artifact
          uses: actions/download-artifact@v2
          with:
-           name: build-Android
+           name: Build-Android
            path: build/Android
            
       - name: Add Authentication
