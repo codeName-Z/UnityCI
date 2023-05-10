@@ -69,7 +69,7 @@ jobs:
           restore-keys: Library-
       - uses: game-ci/unity-builder@v2
         with:
-	    customParameters: -buildNumber ${{ github.run_number }}
+	    customParameters: build-number: ${{github.run_number}}
           targetPlatform: ${{ matrix.targetPlatform }}
 	    buildMethod: BuildScript.Build
           projectPath: ${{ matrix.projectPath }}
