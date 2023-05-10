@@ -11,14 +11,6 @@ jobs:
   testRunner:
     name: Test all modes 📝
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        projectPath:
-          - test-project
-        testMode:
-          - playmode
-          - editmode
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
