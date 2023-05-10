@@ -2,7 +2,6 @@ name: GameCI Template 🎮
 
 on:
   push
-  release: { types: [published] }
 
 jobs:
   buildForAndroidPlatform:
@@ -27,7 +26,7 @@ jobs:
           androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
-#	    versioning: Semantic
+	    versioning: Semantic
       - uses: actions/upload-artifact@v2
         with:
           name: build-Android
@@ -37,7 +36,6 @@ jobs:
     name: Release to the Google Play Store
     runs-on: ubuntu-latest
     needs: buildForAndroidPlatform
-    if: github.event.action == 'published'
     env:
       GOOGLE_PLAY_KEY_FILE: ${{ secrets.GOOGLE_PLAY_KEY_FILE }}
       GOOGLE_PLAY_KEY_FILE_PATH:
