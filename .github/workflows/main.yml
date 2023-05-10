@@ -51,8 +51,6 @@ jobs:
       matrix:
         targetPlatform:
           - Android # Build an Android .apk standalone app.
-        projectPath:
-          - UnityCI
     steps:
       - uses: actions/checkout@v2
         with:
