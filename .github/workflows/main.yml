@@ -95,41 +95,21 @@ releaseToGooglePlay:
       GOOGLE_PLAY_KEY_FILE: ${{ secrets.GOOGLE_PLAY_KEY_FILE }}
       GOOGLE_PLAY_KEY_FILE_PATH: ${{ format('{0}/fastlane/google-play.json', github.workspace) }}
       ANDROID_BUILD_FILE_PATH: ${{ format('{0}/build/Android/Android.aab', github.workspace) }}
-      ANDROID_PACKAGE_NAME: ${{ secrets.ANDROID_PACKAGE_NAME }}
+      ANDROID_PACKAGE_NAME: com.soom.unityci
       RELEASE_NOTES: ${{ github.event.release.body }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
       - name: Download Android Artifact
         uses: actions/download-artifact@v2
-    with:
-          name: build-Android
+        with:
+          name: cgs-Android
           path: build/Android
-      - name: Add Authentication
-        run: echo "$GOOGLE_PLAY_KEY_FILE" > $GOOGLE_PLAY_KEY_FILE_PATH
-      - name: Set up Fastlane
-        uses: ruby/setup-ruby@v1
+      - name: Prepare for Upload
+        run: |
+          echo "$GOOGLE_PLAY_KEY_FILE" > $GOOGLE_PLAY_KEY_FILE_PATH
+          echo "$RELEASE_NOTES" > fastlane/metadata/android/en-US/changelogs/default.txt
+      - name: Upload to Google Play
+        uses: maierj/fastlane-action@v1.4.0
         with:
-          ruby-version: 3.2.2 #2.7.2
-          bundler-cache: true
-      - name: Upload to Google Play Internal
-        uses: maierj/fastlane-action@v2.0.1
-        with:
-          lane: 'android internal' # Change to upload to a different lane
-      - name: Cleanup to avoid storage limit
-        if: always()
-        uses: geekyeggo/delete-artifact@v1
-        with:
-          name: build-Android
-
-# 	  with:
-#          lane: 'android internal' # Change to upload to a different lane
-#      - name: Cleanup to avoid storage limit
-#        if: always()
-#        uses: geekyeggo/delete-artifact@v1
-#        with:
-#          name: build-Android
-#
-#
-#       with:
-#         lane: 'android playstore'
+          lane: 'android playstore'
