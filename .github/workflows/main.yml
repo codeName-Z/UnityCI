@@ -2,6 +2,12 @@ name: GameCI Template 🎮
 
 on: push
 
+env:
+  UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+  UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+  UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+  BUILD_NUMBER: ${{ github.run_number }}
+
 jobs:
 #  testRunner:
 #    name: Test all modes 📝
@@ -43,7 +49,7 @@ jobs:
 #          name: Test results (all modes)
 #          path: ${{ steps.testRunner.outputs.artifactsPath }}
 
-  buildForAllSupportedPlatforms:
+  buildWithLinux:
     name: Build for ${{ matrix.targetPlatform }}
     runs-on: ubuntu-latest
     strategy:
@@ -62,15 +68,12 @@ jobs:
           key: Library-${{ matrix.targetPlatform }}
           restore-keys: Library-
       - uses: game-ci/unity-builder@v2
-        env:
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
+	    customParameters: -buildNumber ${{ github.run_number }}
           targetPlatform: ${{ matrix.targetPlatform }}
           projectPath: ${{ matrix.projectPath }}
           unityVersion: "2021.3.9f1"
-#         androidAppBundle: true
+          androidAppBundle: true
           androidKeystoreName: user.keystore
           androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
@@ -80,3 +83,41 @@ jobs:
         with:
           name: Build-${{ matrix.targetPlatform }}
           path: build/${{ matrix.targetPlatform }}
+
+releaseToGooglePlay:
+    name: Release to the Google Play Store
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: buildWithLinux
+    if: github.event.action == 'published'
+    env:
+      GOOGLE_PLAY_KEY_FILE: ${{ secrets.GOOGLE_PLAY_KEY_FILE }}
+      GOOGLE_PLAY_KEY_FILE_PATH: ${{ format('{0}/fastlane/google-play.json', github.workspace) }}
+      ANDROID_BUILD_FILE_PATH: ${{ format('{0}/build/Android/Android.aab', github.workspace) }}
+      ANDROID_PACKAGE_NAME: ${{ secrets.ANDROID_PACKAGE_NAME }}
+      RELEASE_NOTES: ${{ github.event.release.body }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: cgs-Android
+          path: build/Android
+      - name: Prepare for Upload
+        run: |
+          echo "$GOOGLE_PLAY_KEY_FILE" > $GOOGLE_PLAY_KEY_FILE_PATH
+          echo "$RELEASE_NOTES" > fastlane/metadata/android/en-US/changelogs/default.txt
+      - name: Upload to Google Play Internal
+        uses: maierj/fastlane-action@v2.0.1
+ 	  with:
+          lane: 'android internal' # Change to upload to a different lane
+      - name: Cleanup to avoid storage limit
+        if: always()
+        uses: geekyeggo/delete-artifact@v1
+        with:
+          name: build-Android
+
+
+#       with:
+#         lane: 'android playstore'
