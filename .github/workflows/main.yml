@@ -13,15 +13,18 @@ jobs:
           path: Library
           key: Library-Android
       - uses: game-ci/unity-builder@v2
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
           targetPlatform: Android
           androidAppBundle: true
-          androidKeystoreName: user # This file won't exist, but this property needs to exist.
+          androidKeystoreName: $ {{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
-          androidTargetSdkVersion: AndroidApiLevel31
       - uses: actions/upload-artifact@v2
         with:
           name: build-Android
