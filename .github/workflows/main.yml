@@ -1,125 +1,63 @@
 name: GameCI Template 🎮
 
-on: 
-  #push
-  release: { types: [published] }
-
-env:
-  UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-  UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-  UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
-  BUILD_NUMBER: ${{ github.run_number }}
+on: push
 
 jobs:
-#  testRunner:
-#    name: Test all modes 📝
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout code
-#        uses: actions/checkout@v2
-#
-#      - name: Create LFS file list
-#        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
-#
-#      - name: Restore LFS cache
-#        uses: actions/cache@v2
-#        id: lfs-cache
-#        with:
-#          path: .git/lfs
-#          key: ${{ runner.os }}-lfs-${{ hashFiles('.lfs-assets-id') }}
-#
-#      - name: Git LFS Pull
-#        run: |
-#          git lfs pull
-#          git add .
-#          git reset --hard
-#      - name: Restore Library cache
-#        uses: actions/cache@v2
-#        with:
-#          path: Library
-#          key: Library-test-project
-#          restore-keys: |
-#            Library-test-project-
-#            Library-
-#      - uses: webbertakken/unity-test-runner@v2
-#        id: testRunner
-#        with:
-#          testMode: all
-#
-#      - uses: actions/upload-artifact@v2
-#        with:
-#          name: Test results (all modes)
-#          path: ${{ steps.testRunner.outputs.artifactsPath }}
-
-  buildWithLinux:
-    name: Build for ${{ matrix.targetPlatform }}
+  buildForAndroidPlatform:
+    name: Build For Android Platform
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        targetPlatform:
-          - Android
     steps:
       - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-          lfs: true
       - uses: actions/cache@v2
         with:
-          path: Library                   
-          key: Library-${{ matrix.targetPlatform }}
-          restore-keys: Library-
+          path: Library
+          key: Library-Android
       - uses: game-ci/unity-builder@v2
         with:
-#	        customParameters: build-number: ${{github.run_number}}
-          targetPlatform: ${{ matrix.targetPlatform }}
-#	        buildMethod: BuildScript.Build
-          projectPath: ${{ matrix.projectPath }}
-          unityVersion: "2021.3.9f1"
+          targetPlatform: Android
           androidAppBundle: true
-          androidKeystoreName: user.keystore
+          androidKeystoreName: user # This file won't exist, but this property needs to exist.
           androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
           androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+          androidTargetSdkVersion: AndroidApiLevel31
       - uses: actions/upload-artifact@v2
         with:
-          name: Build-${{ matrix.targetPlatform }}
-          path: build/${{ matrix.targetPlatform }}
+          name: build-Android
+          path: build/Android
 
- deployToGooglePlay:
-    name: Deploy to the Google Play Store
+  releaseToGooglePlay:
+    name: Release to the Google Play Store
     runs-on: ubuntu-latest
-    needs: buildWithLinux
-    if: github.event.action == 'published' || (contains(github.event.inputs.workflow_mode, 'release') && contains(github.event.inputs.workflow_mode, 'Android'))
+    needs: buildForAndroidPlatform
+    env:
+      GOOGLE_PLAY_KEY_FILE: ${{ secrets.GOOGLE_PLAY_KEY_FILE }}
+      GOOGLE_PLAY_KEY_FILE_PATH:
+        ${{ format('{0}/fastlane/google-fastlane.json', github.workspace) }}
+      ANDROID_BUILD_FILE_PATH: ${{ format('{0}/build/Android/Android.aab', github.workspace) }}
+      ANDROID_PACKAGE_NAME: ${{ secrets.ANDROID_PACKAGE_NAME }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
       - name: Download Android Artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v2
         with:
-          name: Build-Android
+          name: build-Android
           path: build/Android
-      - name: Update Release Notes
-        if: github.event.action == 'published'
-        env:
-          RELEASE_NOTES: ${{ github.event.release.body }}
-        run: echo "$RELEASE_NOTES" > fastlane/metadata/android/en-US/changelogs/default.txt
       - name: Add Authentication
-        env:
-          GOOGLE_PLAY_KEY_FILE: ${{ secrets.GOOGLE_PLAY_KEY_FILE }}
-          GOOGLE_PLAY_KEY_FILE_PATH: ${{ format('{0}/fastlane/google-play.json', github.workspace) }}
         run: echo "$GOOGLE_PLAY_KEY_FILE" > $GOOGLE_PLAY_KEY_FILE_PATH
-      - name: Setup Ruby
+      - name: Set up Fastlane
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.2.0
+          ruby-version: 2.7.2
           bundler-cache: true
-      - name: Upload to Google Play
-        env:
-          GOOGLE_PLAY_KEY_FILE_PATH: ${{ format('{0}/fastlane/google-play.json', github.workspace) }}
-          ANDROID_BUILD_FILE_PATH: ${{ format('{0}/build/Android/Android.aab', github.workspace) }}
-          ANDROID_PACKAGE_NAME: ${{ secrets.ANDROID_PACKAGE_NAME }}
-        uses: maierj/fastlane-action@v2.212.2 #3.0.0
+      - name: Upload to Google Play Internal
+        uses: maierj/fastlane-action@v2.0.1
         with:
-          lane: 'android internal'
+          lane: 'android internal' # Change to upload to a different lane
+      - name: Cleanup to avoid storage limit
+        if: always()
+        uses: geekyeggo/delete-artifact@v1
+        with:
+          name: build-Android
