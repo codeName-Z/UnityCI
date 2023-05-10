@@ -102,7 +102,7 @@ releaseToGooglePlay:
         uses: actions/checkout@v2
       - name: Download Android Artifact
         uses: actions/download-artifact@v2
-	  with:
+    with:
           name: build-Android
           path: build/Android
       - name: Add Authentication
@@ -110,11 +110,11 @@ releaseToGooglePlay:
       - name: Set up Fastlane
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 2.7.2
+          ruby-version: 3.2.2 #2.7.2
           bundler-cache: true
       - name: Upload to Google Play Internal
         uses: maierj/fastlane-action@v2.0.1
- 	  with:
+        with:
           lane: 'android internal' # Change to upload to a different lane
       - name: Cleanup to avoid storage limit
         if: always()
@@ -122,6 +122,14 @@ releaseToGooglePlay:
         with:
           name: build-Android
 
-
+# 	  with:
+#          lane: 'android internal' # Change to upload to a different lane
+#      - name: Cleanup to avoid storage limit
+#        if: always()
+#        uses: geekyeggo/delete-artifact@v1
+#        with:
+#          name: build-Android
+#
+#
 #       with:
 #         lane: 'android playstore'
