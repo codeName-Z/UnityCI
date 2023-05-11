@@ -26,7 +26,7 @@ jobs:
         with:
 #         customParameters: -buildNumber ${{ github.run_number }}
           targetPlatform: Android
-	    buildMethod: UnityBuilderAction.BuildScript.Build
+	    buildMethod: BuildScript.Build
           androidAppBundle: true
           androidKeystoreName: $ {{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
