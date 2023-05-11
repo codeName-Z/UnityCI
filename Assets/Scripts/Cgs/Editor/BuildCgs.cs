@@ -1,54 +1,69 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
+using JetBrains.Annotations;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
+using UnityEngine;
 
-namespace UnityBuilderAction
+namespace Cgs.Editor
 {
-    public static class BuildScript
+    internal static class BuildCgs
     {
         private static readonly string Eol = Environment.NewLine;
 
         private static readonly string[] Secrets =
             {"androidKeystorePass", "androidKeyaliasName", "androidKeyaliasPass"};
 
-        public static void Build()
+        [UsedImplicitly]
+        public static void BuildOptions()
         {
             // Gather values from args
-            Dictionary<string, string> options = GetValidatedOptions();
+            var options = GetValidatedOptions();
+
+            //PlayerSettings.macOS.buildNumber = version;
+            //while (version.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries).Length < 4)
+            //    version += ".0";
 
             // Set version for this build
-            PlayerSettings.bundleVersion = options["buildVersion"];
-            PlayerSettings.macOS.buildNumber = options["buildVersion"];
-            PlayerSettings.Android.bundleVersionCode = int.Parse(options["androidVersionCode"]);
+            var version = options["buildVersion"];
+            PlayerSettings.bundleVersion = version;
+            PlayerSettings.macOS.buildNumber = options["buildNumber"];
             PlayerSettings.iOS.buildNumber = options["buildNumber"];
-            PlayerSettings.WSA.packageVersion = new Version(options["buildVersion"]);
+            PlayerSettings.Android.bundleVersionCode = int.Parse(options["buildNumber"]);
+            PlayerSettings.WSA.packageVersion = new Version(version);
 
             // Apply build target
             var buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), options["buildTarget"]);
+            // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
             switch (buildTarget)
             {
                 case BuildTarget.Android:
                     {
+                        PlayerSettings.Android.bundleVersionCode = int.Parse(options["androidVersionCode"]);
                         EditorUserBuildSettings.buildAppBundle = options["customBuildPath"].EndsWith(".aab");
-                        if (options.TryGetValue("androidKeystoreName", out string keystoreName) &&
+                        if (options.TryGetValue("androidKeystoreName", out var keystoreName) &&
                             !string.IsNullOrEmpty(keystoreName))
                         {
                             PlayerSettings.Android.useCustomKeystore = true;
                             PlayerSettings.Android.keystoreName = keystoreName;
                         }
-                        if (options.TryGetValue("androidKeystorePass", out string keystorePass) &&
+
+                        if (options.TryGetValue("androidKeystorePass", out var keystorePass) &&
                             !string.IsNullOrEmpty(keystorePass))
                             PlayerSettings.Android.keystorePass = keystorePass;
-                        if (options.TryGetValue("androidKeyaliasName", out string keyaliasName) &&
+                        if (options.TryGetValue("androidKeyaliasName", out var keyaliasName) &&
                             !string.IsNullOrEmpty(keyaliasName))
                             PlayerSettings.Android.keyaliasName = keyaliasName;
-                        if (options.TryGetValue("androidKeyaliasPass", out string keyaliasPass) &&
+                        if (options.TryGetValue("androidKeyaliasPass", out var keyaliasPass) &&
                             !string.IsNullOrEmpty(keyaliasPass))
                             PlayerSettings.Android.keyaliasPass = keyaliasPass;
-                        if (options.TryGetValue("androidTargetSdkVersion", out string androidTargetSdkVersion) &&
+
+                        if (options.TryGetValue("androidTargetSdkVersion", out var androidTargetSdkVersion) &&
                             !string.IsNullOrEmpty(androidTargetSdkVersion))
                         {
                             var targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto;
@@ -59,7 +74,7 @@ namespace UnityBuilderAction
                             }
                             catch
                             {
-                                UnityEngine.Debug.Log("Failed to parse androidTargetSdkVersion! Fallback to AndroidApiLevelAuto");
+                                Debug.Log("Failed to parse androidTargetSdkVersion! Fallback to AndroidApiLevelAuto");
                             }
 
                             PlayerSettings.Android.targetSdkVersion = targetSdkVersion;
@@ -67,64 +82,47 @@ namespace UnityBuilderAction
 
                         break;
                     }
-                case BuildTarget.StandaloneOSX:
-                    PlayerSettings.SetScriptingBackend(BuildTargetGroup.Standalone, ScriptingImplementation.Mono2x);
+                case BuildTarget.StandaloneWindows:
+                case BuildTarget.StandaloneWindows64:
+                    if (!options["customBuildPath"].EndsWith(".exe"))
+                        options["customBuildPath"] += "/cgs.exe";
+                    break;
+                case BuildTarget.WSAPlayer:
+                    EditorUserBuildSettings.wsaUWPBuildType = WSAUWPBuildType.XAML;
                     break;
             }
 
-            // Determine subtarget
-            int buildSubtarget = 0;
-#if UNITY_2021_2_OR_NEWER
-            if (!options.TryGetValue("standaloneBuildSubtarget", out var subtargetValue) || !Enum.TryParse(subtargetValue, out StandaloneBuildSubtarget buildSubtargetValue))
-            {
-                buildSubtargetValue = default;
-            }
-            buildSubtarget = (int)buildSubtargetValue;
-#endif
-
             // Custom build
-            Build(buildTarget, buildSubtarget, options["customBuildPath"]);
+            Build(buildTarget, options["customBuildPath"]);
         }
 
         private static Dictionary<string, string> GetValidatedOptions()
         {
-            ParseCommandLineArguments(out Dictionary<string, string> validatedOptions);
+            ParseCommandLineArguments(out var validatedOptions);
 
-            if (!validatedOptions.TryGetValue("projectPath", out string _))
+            if (!validatedOptions.TryGetValue("projectPath", out _))
             {
                 Console.WriteLine("Missing argument -projectPath");
                 EditorApplication.Exit(110);
             }
 
-            if (!validatedOptions.TryGetValue("buildTarget", out string buildTarget))
+            if (!validatedOptions.TryGetValue("buildTarget", out var buildTarget))
             {
                 Console.WriteLine("Missing argument -buildTarget");
                 EditorApplication.Exit(120);
             }
 
             if (!Enum.IsDefined(typeof(BuildTarget), buildTarget ?? string.Empty))
-            {
-                Console.WriteLine($"{buildTarget} is not a defined {nameof(BuildTarget)}");
                 EditorApplication.Exit(121);
-            }
 
-            if (!validatedOptions.TryGetValue("customBuildPath", out string _))
-            {
-                Console.WriteLine("Missing argument -customBuildPath");
-                EditorApplication.Exit(130);
-            }
+            if (validatedOptions.TryGetValue("buildPath", out var buildPath))
+                validatedOptions["customBuildPath"] = buildPath;
 
-            const string defaultCustomBuildName = "TestBuild";
-            if (!validatedOptions.TryGetValue("customBuildName", out string customBuildName))
-            {
-                Console.WriteLine($"Missing argument -customBuildName, defaulting to {defaultCustomBuildName}.");
-                validatedOptions.Add("customBuildName", defaultCustomBuildName);
-            }
-            else if (customBuildName == "")
-            {
-                Console.WriteLine($"Invalid argument -customBuildName, defaulting to {defaultCustomBuildName}.");
-                validatedOptions.Add("customBuildName", defaultCustomBuildName);
-            }
+            if (validatedOptions.TryGetValue("customBuildPath", out _))
+                return validatedOptions;
+
+            Console.WriteLine("Missing argument -customBuildPath");
+            EditorApplication.Exit(130);
 
             return validatedOptions;
         }
@@ -132,7 +130,7 @@ namespace UnityBuilderAction
         private static void ParseCommandLineArguments(out Dictionary<string, string> providedArguments)
         {
             providedArguments = new Dictionary<string, string>();
-            string[] args = Environment.GetCommandLineArgs();
+            var args = Environment.GetCommandLineArgs();
 
             Console.WriteLine(
                 $"{Eol}" +
@@ -146,15 +144,15 @@ namespace UnityBuilderAction
             for (int current = 0, next = 1; current < args.Length; current++, next++)
             {
                 // Parse flag
-                bool isFlag = args[current].StartsWith("-");
+                var isFlag = args[current].StartsWith("-");
                 if (!isFlag) continue;
-                string flag = args[current].TrimStart('-');
+                var flag = args[current].TrimStart('-');
 
                 // Parse optional value
-                bool flagHasValue = next < args.Length && !args[next].StartsWith("-");
-                string value = flagHasValue ? args[next].TrimStart('-') : "";
-                bool secret = Secrets.Contains(flag);
-                string displayValue = secret ? "*HIDDEN*" : "\"" + value + "\"";
+                var flagHasValue = next < args.Length && !args[next].StartsWith("-");
+                var value = flagHasValue ? args[next].TrimStart('-') : "";
+                var isSecret = Secrets.Contains(flag);
+                var displayValue = isSecret ? "*HIDDEN*" : "\"" + value + "\"";
 
                 // Assign
                 Console.WriteLine($"Found flag \"{flag}\" with value {displayValue}.");
@@ -162,22 +160,17 @@ namespace UnityBuilderAction
             }
         }
 
-        private static void Build(BuildTarget buildTarget, int buildSubtarget, string filePath)
+        private static void Build(BuildTarget buildTarget, string filePath)
         {
-            string[] scenes = EditorBuildSettings.scenes.Where(scene => scene.enabled).Select(s => s.path).ToArray();
+            var scenes = EditorBuildSettings.scenes.Where(scene => scene.enabled).Select(s => s.path).ToArray();
             var buildPlayerOptions = new BuildPlayerOptions
             {
                 scenes = scenes,
                 target = buildTarget,
-                //                targetGroup = BuildPipeline.GetBuildTargetGroup(buildTarget),
                 locationPathName = filePath,
-                //                options = UnityEditor.BuildOptions.Development
-#if UNITY_2021_2_OR_NEWER
-                subtarget = buildSubtarget
-#endif
             };
 
-            BuildSummary buildSummary = BuildPipeline.BuildPlayer(buildPlayerOptions).summary;
+            var buildSummary = BuildPipeline.BuildPlayer(buildPlayerOptions).summary;
             ReportSummary(buildSummary);
             ExitWithResult(buildSummary.result);
         }
