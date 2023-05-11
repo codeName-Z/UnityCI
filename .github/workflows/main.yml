@@ -30,7 +30,7 @@ jobs:
         with:
           customParameters: -buildNumber ${{ github.run_number }}
           targetPlatform: Android
-	    buildMethod: Cgs.Editor.BuildCgs.BuildOptions
+	    buildMethod: UnityBuilderAction.BuildScript.Build
           androidAppBundle: true
           androidKeystoreName: $ {{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
