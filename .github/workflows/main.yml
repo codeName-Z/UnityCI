@@ -6,6 +6,12 @@ on:
     tags:
       - 'v*'
 
+env:
+  UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+  UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+  UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+  BUILD_NUMBER: ${{ github.run_number }}
+
 jobs:
   buildForAndroidPlatform:
     name: Build For Android Platform
@@ -17,12 +23,10 @@ jobs:
           path: Library
           key: Library-Android
       - uses: game-ci/unity-builder@v2
-        env:
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
         with:
+	    customParameters: -buildNumber ${{ github.run_number }}
           targetPlatform: Android
+	    buildMethod: UnityBuilderAction.BuildScript.Build
           androidAppBundle: true
           androidKeystoreName: $ {{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}

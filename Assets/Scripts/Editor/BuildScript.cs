@@ -23,6 +23,8 @@ namespace UnityBuilderAction
             PlayerSettings.bundleVersion = options["buildVersion"];
             PlayerSettings.macOS.buildNumber = options["buildVersion"];
             PlayerSettings.Android.bundleVersionCode = int.Parse(options["androidVersionCode"]);
+            PlayerSettings.iOS.buildNumber = options["buildNumber"];
+            PlayerSettings.WSA.packageVersion = new Version(options["buildVersion"]);
 
             // Apply build target
             var buildTarget = (BuildTarget)Enum.Parse(typeof(BuildTarget), options["buildTarget"]);
