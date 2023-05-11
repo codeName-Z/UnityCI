@@ -1,7 +1,10 @@
 name: GameCI
 
 on:
-  push
+  #push
+  push:
+    tags:
+      - 'v*'
 
 jobs:
   buildForAndroidPlatform:
