@@ -28,9 +28,10 @@ jobs:
           key: Library-Android
       - uses: game-ci/unity-builder@v2
         with:
-          customParameters: -buildNumber ${{ github.run_number }}
+          versioning: Semantic
+          #customParameters: -buildNumber ${{ github.run_number }}
           targetPlatform: Android
-	    #buildMethod: UnityBuilderAction.BuildScript.Build
+	        #buildMethod: UnityBuilderAction.BuildScript.Build
           androidAppBundle: true
           androidKeystoreName: $ {{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
