@@ -29,9 +29,7 @@ jobs:
       - uses: game-ci/unity-builder@v2
         with:
           versioning: Semantic
-          #customParameters: -buildNumber ${{ github.run_number }}
           targetPlatform: Android
-	        #buildMethod: UnityBuilderAction.BuildScript.Build
           androidAppBundle: true
           androidKeystoreName: $ {{ secrets.ANDROID_KEYALIAS_NAME }}
           androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
