@@ -28,7 +28,6 @@ jobs:
           key: Library-Android
       - uses: game-ci/unity-builder@v2
         with:
-          versioning: Semantic
           targetPlatform: Android
           androidAppBundle: true
           androidKeystoreName: $ {{ secrets.ANDROID_KEYALIAS_NAME }}
